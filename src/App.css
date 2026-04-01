@@ -1,0 +1,723 @@
+.app-shell {
+  position: relative;
+  min-height: 100vh;
+  padding: 40px 32px 32px;
+  overflow: hidden;
+}
+
+.bg-orbit {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(8px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.bg-orbit-a {
+  width: 520px;
+  height: 520px;
+  top: -190px;
+  right: -120px;
+  background: radial-gradient(circle, rgba(232, 102, 52, 0.28), rgba(232, 102, 52, 0));
+}
+
+.bg-orbit-b {
+  width: 420px;
+  height: 420px;
+  bottom: -160px;
+  left: -120px;
+  background: radial-gradient(circle, rgba(58, 109, 167, 0.24), rgba(58, 109, 167, 0));
+}
+
+.masthead,
+.mode-switch,
+.command-bar,
+.source-strip,
+.browse-stage,
+.preview-stage,
+.cloud-stage,
+.error-banner,
+.feedback-banner {
+  position: relative;
+  z-index: 1;
+}
+
+.masthead {
+  display: grid;
+  gap: 22px;
+  padding: 20px 0 24px;
+}
+
+.eyebrow-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 35, 59, 0.15);
+  background: rgba(255, 251, 245, 0.78);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.eyebrow.muted {
+  color: rgba(16, 35, 59, 0.64);
+}
+
+.masthead-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(320px, 0.95fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.masthead-copy {
+  display: grid;
+  gap: 18px;
+}
+
+.kicker,
+.section-kicker {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(16, 35, 59, 0.62);
+}
+
+.summary {
+  max-width: 68ch;
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+.signal-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.signal-card,
+.source-card,
+.board,
+.command-bar,
+.preview-page,
+.preview-pane,
+.meta-card,
+.mode-chip {
+  border: 1px solid rgba(16, 35, 59, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(247, 241, 229, 0.92));
+  box-shadow:
+    0 28px 60px rgba(31, 36, 43, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.64);
+  backdrop-filter: blur(8px);
+}
+
+.signal-card {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border-radius: 20px;
+}
+
+.signal-card strong {
+  font-size: 34px;
+  color: var(--ink-strong);
+}
+
+.signal-label,
+.meta-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(16, 35, 59, 0.58);
+}
+
+.mode-switch {
+  display: inline-flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.mode-chip {
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 999px;
+  color: var(--ink-strong);
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.mode-chip:hover {
+  transform: translateY(-1px);
+}
+
+.mode-chip.is-active {
+  border-color: rgba(180, 63, 22, 0.32);
+  color: #8c3815;
+}
+
+.command-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: end;
+  padding: 18px;
+  border-radius: 22px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  min-width: 200px;
+}
+
+.field.grow {
+  flex: 1 1 320px;
+}
+
+.field span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(16, 35, 59, 0.6);
+}
+
+.field select,
+.field input,
+.refresh-button,
+.back-button,
+.download-button,
+.more-button,
+.card-link {
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1px solid rgba(16, 35, 59, 0.15);
+  color: var(--ink-strong);
+  font: inherit;
+}
+
+.field select,
+.field input {
+  padding: 0 16px;
+  background: rgba(255, 251, 245, 0.95);
+}
+
+.field input::placeholder {
+  color: rgba(16, 35, 59, 0.45);
+}
+
+.refresh-button,
+.back-button,
+.download-button,
+.more-button,
+.card-link {
+  padding: 0 18px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease;
+}
+
+.refresh-button,
+.download-button,
+.more-button {
+  background:
+    linear-gradient(135deg, rgba(222, 100, 48, 0.98), rgba(180, 63, 22, 0.98));
+  color: #fff9f3;
+}
+
+.back-button,
+.card-link {
+  background: rgba(255, 251, 245, 0.95);
+}
+
+.refresh-button:hover:not(:disabled),
+.back-button:hover,
+.download-button:hover:not(:disabled),
+.more-button:hover,
+.card-link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 32px rgba(16, 35, 59, 0.14);
+}
+
+.refresh-button:disabled,
+.download-button:disabled {
+  cursor: progress;
+  opacity: 0.74;
+}
+
+.error-banner,
+.feedback-banner {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+}
+
+.error-banner {
+  border: 1px solid rgba(176, 54, 28, 0.22);
+  background: rgba(181, 54, 28, 0.08);
+  color: #7b2310;
+}
+
+.feedback-banner {
+  border: 1px solid rgba(34, 118, 88, 0.22);
+  background: rgba(34, 118, 88, 0.08);
+  color: #19543d;
+}
+
+.source-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.source-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 20px;
+}
+
+.source-card.is-missing {
+  opacity: 0.72;
+}
+
+.source-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.source-name {
+  margin: 0;
+  font-size: 20px;
+  color: var(--ink-strong);
+}
+
+.source-meta,
+.source-warning,
+.preview-note,
+.repo-description {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.path-list {
+  display: grid;
+  gap: 8px;
+}
+
+.path-list code {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.status-pill,
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.status-pill {
+  border: 1px solid rgba(16, 35, 59, 0.14);
+  background: rgba(255, 251, 245, 0.92);
+}
+
+.browse-stage,
+.preview-stage {
+  margin-top: 20px;
+}
+
+.board,
+.preview-page {
+  border-radius: 28px;
+  padding: 22px;
+}
+
+.section-heading,
+.skill-section-header,
+.preview-pane-header,
+.preview-hero {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.section-heading {
+  margin-bottom: 18px;
+}
+
+.section-note {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(16, 35, 59, 0.58);
+}
+
+.section-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.skill-section {
+  display: grid;
+  gap: 14px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(16, 35, 59, 0.1);
+}
+
+.skill-section:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.skill-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(16, 35, 59, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(245, 238, 224, 0.9));
+  text-align: left;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+
+.skill-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 42px rgba(16, 35, 59, 0.1);
+  border-color: rgba(180, 63, 22, 0.28);
+}
+
+.remote-card {
+  position: relative;
+}
+
+.skill-card-top,
+.skill-card-footer,
+.detail-pills,
+.skill-card-meta,
+.preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.skill-card h3 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.12;
+}
+
+.skill-description,
+.preview-summary {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.skill-card-meta,
+.skill-card-footer {
+  font-size: 12px;
+  color: rgba(16, 35, 59, 0.54);
+}
+
+.card-link {
+  min-height: 40px;
+  padding: 0 14px;
+}
+
+.badge-claude {
+  background: rgba(94, 84, 214, 0.14);
+  color: #4f44a7;
+}
+
+.badge-codex {
+  background: rgba(43, 109, 194, 0.12);
+  color: #1a5098;
+}
+
+.badge-openclaw {
+  background: rgba(205, 94, 36, 0.14);
+  color: #8f3b11;
+}
+
+.badge-tencent {
+  background: rgba(34, 164, 120, 0.14);
+  color: #167355;
+}
+
+.badge-clawhub {
+  background: rgba(201, 84, 133, 0.14);
+  color: #8c3159;
+}
+
+.badge-anthropic {
+  background: rgba(140, 92, 54, 0.14);
+  color: #6d4220;
+}
+
+.badge-scope {
+  background: rgba(16, 35, 59, 0.08);
+  color: rgba(16, 35, 59, 0.74);
+}
+
+.preview-stage {
+  display: grid;
+  gap: 14px;
+}
+
+.preview-page {
+  display: grid;
+  gap: 18px;
+}
+
+.preview-hero {
+  align-items: start;
+}
+
+.preview-hero-copy {
+  display: grid;
+  gap: 12px;
+}
+
+.preview-actions {
+  align-items: start;
+  justify-content: end;
+}
+
+.preview-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.meta-card {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 18px;
+}
+
+.meta-card strong,
+.meta-card code {
+  overflow-wrap: anywhere;
+}
+
+.preview-pane {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 24px;
+}
+
+.preview-pane-header {
+  align-items: center;
+}
+
+.preview-text {
+  margin: 0;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(16, 35, 59, 0.1);
+  background: rgba(255, 251, 245, 0.86);
+  color: var(--ink-strong);
+  font: 14px/1.65 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.more-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.empty-state {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  border-radius: 22px;
+  border: 1px dashed rgba(16, 35, 59, 0.18);
+  background: rgba(255, 251, 245, 0.5);
+  text-align: center;
+  padding: 22px;
+}
+
+.detail-empty {
+  min-height: 320px;
+}
+
+/* Cloud Explore panel */
+
+.cloud-stage {
+  display: grid;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.cloud-repo {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border-radius: 28px;
+  border: 1px solid rgba(16, 35, 59, 0.12);
+  background: linear-gradient(180deg, rgba(255, 252, 246, 0.96), rgba(247, 241, 229, 0.92));
+  box-shadow:
+    0 28px 60px rgba(31, 36, 43, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.64);
+  backdrop-filter: blur(8px);
+}
+
+.cloud-repo-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid rgba(16, 35, 59, 0.1);
+}
+
+.cloud-repo-title {
+  display: grid;
+  gap: 6px;
+}
+
+.cloud-repo-title h2 {
+  margin: 0;
+}
+
+.cloud-repo-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.repo-skill-count {
+  font-size: 13px;
+  color: rgba(16, 35, 59, 0.58);
+}
+
+/* Tencent SkillHub — teal */
+.cloud-repo-tencent {
+  background: linear-gradient(180deg, rgba(230, 255, 246, 0.94), rgba(210, 244, 234, 0.88));
+  border-color: rgba(34, 164, 120, 0.2);
+}
+
+.cloud-repo-tencent .cloud-repo-header {
+  border-bottom-color: rgba(34, 164, 120, 0.35);
+}
+
+/* ClawHub — rose */
+.cloud-repo-clawhub {
+  background: linear-gradient(180deg, rgba(255, 241, 246, 0.94), rgba(247, 224, 233, 0.88));
+  border-color: rgba(201, 84, 133, 0.2);
+}
+
+.cloud-repo-clawhub .cloud-repo-header {
+  border-bottom-color: rgba(201, 84, 133, 0.35);
+}
+
+/* Anthropic — amber */
+.cloud-repo-anthropic {
+  background: linear-gradient(180deg, rgba(255, 246, 235, 0.94), rgba(242, 227, 209, 0.88));
+  border-color: rgba(140, 92, 54, 0.2);
+}
+
+.cloud-repo-anthropic .cloud-repo-header {
+  border-bottom-color: rgba(140, 92, 54, 0.35);
+}
+
+@media (max-width: 1120px) {
+  .masthead-grid,
+  .preview-meta-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    padding: 20px 16px 16px;
+  }
+
+  .signal-panel,
+  .skills-grid,
+  .preview-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .board,
+  .preview-page,
+  .command-bar,
+  .preview-pane,
+  .cloud-repo {
+    padding: 18px;
+  }
+
+  .section-heading,
+  .source-card-header,
+  .cloud-repo-header,
+  .skill-section-header,
+  .preview-pane-header,
+  .preview-hero,
+  .preview-actions {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .mode-switch,
+  .skill-card-footer {
+    display: grid;
+  }
+
+  .cloud-repo-meta {
+    align-items: start;
+    flex-direction: row;
+  }
+}
