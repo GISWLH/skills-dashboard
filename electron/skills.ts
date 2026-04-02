@@ -11,6 +11,8 @@ import type {
   DashboardSnapshot,
   LocalSourceFilter,
   LocalSourceId,
+  LocalSyncOperation,
+  LocalSyncResult,
   RemoteInstallRequest,
   RemoteInstallResult,
   RemoteSourceId,
@@ -31,6 +33,17 @@ interface LocalSourceDefinition {
   label: string
   displayPaths: string[]
   roots: ScanRoot[]
+}
+
+interface LocalSyncSourceDefinition {
+  id: LocalSourceId
+  label: string
+  rootPath: string
+}
+
+interface LocalSyncSourceState extends LocalSyncSourceDefinition {
+  existingFolderNames: Set<string>
+  syncableSkillsBySlug: Map<string, string>
 }
 
 interface RemoteSourceDefinition {
@@ -66,6 +79,7 @@ interface GitHubContentEntry {
 
 const execFileAsync = promisify(execFile)
 const installManifestFileName = '.agent-skills-dashboard.json'
+const localSyncSourcePriority: LocalSourceId[] = ['codex', 'claude', 'openclaw']
 
 const defaultSettings: DashboardSettings = {
   selectedSource: 'all',
@@ -245,6 +259,84 @@ export async function installRemoteSkill(
   }
 }
 
+export async function syncLocalSkills(): Promise<LocalSyncResult> {
+  const sourceDefinitions = getLocalSyncSourceDefinitions()
+  const sourceStates = await Promise.all(
+    sourceDefinitions.map(async (sourceDefinition) => scanLocalSyncSource(sourceDefinition)),
+  )
+  const sourceStateMap = new Map(sourceStates.map((sourceState) => [sourceState.id, sourceState]))
+  const orderedSourceStates = localSyncSourcePriority
+    .map((sourceId) => sourceStateMap.get(sourceId))
+    .filter((sourceState): sourceState is LocalSyncSourceState => Boolean(sourceState))
+
+  const allSkillSlugs = new Set(
+    sourceStates.flatMap((sourceState) => Array.from(sourceState.syncableSkillsBySlug.keys())),
+  )
+  const operations: LocalSyncOperation[] = []
+  const sortedSlugs = Array.from(allSkillSlugs).sort((left, right) =>
+    left.localeCompare(right, 'en', {
+      numeric: true,
+      sensitivity: 'base',
+    }),
+  )
+
+  for (const slug of sortedSlugs) {
+    const sourceState = orderedSourceStates.find((entry) => entry.syncableSkillsBySlug.has(slug))
+    const sourcePath = sourceState?.syncableSkillsBySlug.get(slug)
+    if (!sourceState || !sourcePath) {
+      continue
+    }
+
+    for (const targetState of orderedSourceStates) {
+      if (targetState.id === sourceState.id || targetState.existingFolderNames.has(slug)) {
+        continue
+      }
+
+      await fs.mkdir(targetState.rootPath, { recursive: true })
+      const targetPath = path.join(targetState.rootPath, slug)
+      if (await pathExists(targetPath)) {
+        targetState.existingFolderNames.add(slug)
+        continue
+      }
+
+      try {
+        await fs.cp(sourcePath, targetPath, {
+          recursive: true,
+          force: false,
+          errorOnExist: true,
+        })
+      } catch (error) {
+        throw new Error(
+          `SYX failed while copying ${slug} from ${sourceState.label} to ${targetState.label}: ${getScanErrorMessage(
+            error,
+          )}`,
+        )
+      }
+
+      targetState.existingFolderNames.add(slug)
+      targetState.syncableSkillsBySlug.set(slug, targetPath)
+      operations.push({
+        slug,
+        fromSource: sourceState.id,
+        toSource: targetState.id,
+        sourcePath,
+        targetPath,
+      })
+    }
+  }
+
+  return {
+    syncedAt: new Date().toISOString(),
+    totalUniqueSkills: allSkillSlugs.size,
+    createdFolders: operations.length,
+    operations,
+    message:
+      operations.length === 0
+        ? `SYX completed. ${allSkillSlugs.size} unique local skill folders are already aligned by name.`
+        : `SYX completed. Added ${operations.length} missing folders and preserved a ${allSkillSlugs.size}-skill union across Claude Code, CodeX, and OpenClaw.`,
+  }
+}
+
 async function scanInstalledSkills() {
   const [localResults, remoteResults] = await Promise.all([
     Promise.all(getLocalSourceDefinitions().map(async (sourceDefinition) => scanLocalSource(sourceDefinition))),
@@ -389,6 +481,67 @@ async function scanSkillDirectory(
     lastModified: stats.mtime.toISOString(),
     stats: createEmptySkillStats(),
   } satisfies SkillRecord
+}
+
+function getLocalSyncSourceDefinitions(): LocalSyncSourceDefinition[] {
+  const sourceDefinitions = new Map(
+    getLocalSourceDefinitions().map((sourceDefinition) => [sourceDefinition.id, sourceDefinition]),
+  )
+
+  return localSyncSourcePriority.map((sourceId) => {
+    const sourceDefinition = sourceDefinitions.get(sourceId)
+    const personalRoot = sourceDefinition?.roots.find((root) => root.scope === 'personal')
+
+    if (!sourceDefinition || !personalRoot) {
+      throw new Error(`Missing personal sync root for ${sourceId}.`)
+    }
+
+    return {
+      id: sourceDefinition.id,
+      label: sourceDefinition.label,
+      rootPath: personalRoot.path,
+    }
+  })
+}
+
+async function scanLocalSyncSource(
+  sourceDefinition: LocalSyncSourceDefinition,
+): Promise<LocalSyncSourceState> {
+  const root: ScanRoot = {
+    path: sourceDefinition.rootPath,
+    scope: 'personal',
+    skipHiddenChildren: true,
+  }
+
+  const existingFolderNames = new Set<string>()
+  const syncableSkillsBySlug = new Map<string, string>()
+  if (!(await pathExists(sourceDefinition.rootPath))) {
+    return {
+      ...sourceDefinition,
+      existingFolderNames,
+      syncableSkillsBySlug,
+    }
+  }
+
+  const entries = await fs.readdir(sourceDefinition.rootPath, { withFileTypes: true })
+  const directories = entries
+    .filter((entry) => entry.isDirectory())
+    .filter((entry) => isSkillDirectoryName(entry.name, root))
+
+  for (const entry of directories) {
+    const skillDir = path.join(sourceDefinition.rootPath, entry.name)
+    existingFolderNames.add(entry.name)
+
+    if (await pathExists(path.join(skillDir, 'SKILL.md'))) {
+      syncableSkillsBySlug.set(entry.name, skillDir)
+    }
+  }
+
+  return {
+    ...sourceDefinition,
+    existingFolderNames,
+    syncableSkillsBySlug,
+  }
 }
 
 async function fetchTencentRemoteSkills() {

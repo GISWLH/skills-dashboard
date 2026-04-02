@@ -1,7 +1,12 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { getDashboardSnapshot, installRemoteSkill, updateSelectedSource } from './skills'
+import {
+  getDashboardSnapshot,
+  installRemoteSkill,
+  syncLocalSkills,
+  updateSelectedSource,
+} from './skills'
 import type {
   DashboardSnapshot,
   LocalSourceFilter,
@@ -88,4 +93,10 @@ function registerIpcHandlers() {
       return result
     },
   )
+
+  ipcMain.handle('dashboard:sync-local-skills', async () => {
+    const result = await syncLocalSkills()
+    snapshotCache = await getDashboardSnapshot()
+    return result
+  })
 }

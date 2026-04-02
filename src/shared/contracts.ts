@@ -77,9 +77,26 @@ export interface RemoteInstallResult {
   message: string
 }
 
+export interface LocalSyncOperation {
+  slug: string
+  fromSource: LocalSourceId
+  toSource: LocalSourceId
+  sourcePath: string
+  targetPath: string
+}
+
+export interface LocalSyncResult {
+  syncedAt: string
+  totalUniqueSkills: number
+  createdFolders: number
+  operations: LocalSyncOperation[]
+  message: string
+}
+
 export interface SkillsDashboardApi {
   getSnapshot: () => Promise<DashboardSnapshot>
   refresh: () => Promise<DashboardSnapshot>
   updateSelectedSource: (selectedSource: LocalSourceFilter) => Promise<DashboardSettings>
   installRemoteSkill: (request: RemoteInstallRequest) => Promise<RemoteInstallResult>
+  syncLocalSkills: () => Promise<LocalSyncResult>
 }

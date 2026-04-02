@@ -4,6 +4,8 @@ import type {
   DashboardSnapshot,
   LocalSourceFilter,
   LocalSourceId,
+  LocalSyncOperation,
+  LocalSyncResult,
   RemoteInstallRequest,
   RemoteInstallResult,
   RemoteSourceId,
@@ -33,6 +35,8 @@ const api: SkillsDashboardApi = {
     validateRemoteInstallResult(
       await ipcRenderer.invoke('dashboard:install-remote-skill', validateRemoteInstallRequest(request)),
     ),
+  syncLocalSkills: async () =>
+    validateLocalSyncResult(await ipcRenderer.invoke('dashboard:sync-local-skills')),
 }
 
 contextBridge.exposeInMainWorld('skillsDashboard', api)
@@ -125,6 +129,22 @@ function validateRemoteInstallResult(value: unknown): RemoteInstallResult {
   }
 }
 
+function validateLocalSyncResult(value: unknown): LocalSyncResult {
+  if (!isRecord(value)) {
+    throw new Error('Invalid local sync result payload.')
+  }
+
+  return {
+    syncedAt: requireString(value.syncedAt, 'syncedAt'),
+    totalUniqueSkills: requireNumber(value.totalUniqueSkills, 'totalUniqueSkills'),
+    createdFolders: requireNumber(value.createdFolders, 'createdFolders'),
+    operations: requireArray(value.operations, 'operations').map((entry) =>
+      validateLocalSyncOperation(entry),
+    ),
+    message: requireString(value.message, 'message'),
+  }
+}
+
 function validateRemoteInstallRequest(value: unknown): RemoteInstallRequest {
   if (!isRecord(value)) {
     throw new Error('Invalid remote install request payload.')
@@ -201,6 +221,20 @@ function validateSkillStats(value: unknown): SkillStats {
     downloads: requireNullableNumber(value.downloads, 'stats.downloads'),
     installs: requireNullableNumber(value.installs, 'stats.installs'),
     stars: requireNullableNumber(value.stars, 'stats.stars'),
+  }
+}
+
+function validateLocalSyncOperation(value: unknown): LocalSyncOperation {
+  if (!isRecord(value)) {
+    throw new Error('Invalid local sync operation payload.')
+  }
+
+  return {
+    slug: requireString(value.slug, 'slug'),
+    fromSource: validateLocalSourceId(value.fromSource),
+    toSource: validateLocalSourceId(value.toSource),
+    sourcePath: requireString(value.sourcePath, 'sourcePath'),
+    targetPath: requireString(value.targetPath, 'targetPath'),
   }
 }
 

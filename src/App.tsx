@@ -18,6 +18,7 @@ import type {
 import { localSourceOrder, remoteSourceOrder } from './shared/contracts'
 
 type PanelMode = 'local' | 'remote'
+const defaultRemotePageSize = 6
 
 const bridgeError =
   'Electron desktop bridge is unavailable. Run the dashboard with `npm run dev` or launch the packaged app.'
@@ -31,16 +32,19 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [remotePageSize, setRemotePageSize] = useState(defaultRemotePageSize)
   const [installingSkillId, setInstallingSkillId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null)
   const [remoteVisibleCounts, setRemoteVisibleCounts] = useState<Record<RemoteSourceId, number>>({
-    tencent: 6,
-    clawhub: 6,
-    anthropic: 6,
+    tencent: 0,
+    clawhub: 0,
+    anthropic: 0,
   })
   const deferredQuery = useDeferredValue(searchQuery.trim().toLowerCase())
   const browseScrollRef = useRef(0)
+  const cloudStageRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     void bootstrap()
@@ -87,6 +91,38 @@ function App() {
     const timeout = window.setTimeout(() => setFeedbackMessage(null), 4200)
     return () => window.clearTimeout(timeout)
   }, [feedbackMessage])
+
+  useEffect(() => {
+    if (panelMode !== 'remote') {
+      return
+    }
+
+    const stage = cloudStageRef.current
+    if (!stage) {
+      return
+    }
+
+    let frameId = 0
+    const updateRemotePageSize = () => {
+      window.cancelAnimationFrame(frameId)
+      frameId = window.requestAnimationFrame(() => {
+        const nextPageSize = getRemotePageSize(stage)
+        setRemotePageSize((current) => (current === nextPageSize ? current : nextPageSize))
+      })
+    }
+
+    updateRemotePageSize()
+
+    const observer = new ResizeObserver(() => updateRemotePageSize())
+    observer.observe(stage)
+    window.addEventListener('resize', updateRemotePageSize)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', updateRemotePageSize)
+      window.cancelAnimationFrame(frameId)
+    }
+  }, [panelMode, snapshot?.generatedAt])
 
   const localSources = useMemo(
     () => snapshot?.sources.filter((source) => source.kind === 'local') ?? [],
@@ -195,6 +231,29 @@ function App() {
     }
   }
 
+  async function handleLocalSync() {
+    const api = window.skillsDashboard
+    if (!api) {
+      setErrorMessage(bridgeError)
+      return
+    }
+
+    try {
+      setIsSyncing(true)
+      setErrorMessage(null)
+
+      const result = await api.syncLocalSkills()
+      const nextSnapshot = await api.getSnapshot()
+      setSnapshot(nextSnapshot)
+      setSelectedSource(nextSnapshot.settings.selectedSource)
+      setFeedbackMessage(result.message)
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error))
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+
   function handleSourceChange(nextSource: LocalSourceFilter) {
     startTransition(() => {
       setSelectedSource(nextSource)
@@ -204,7 +263,7 @@ function App() {
   function handleMoreRemote(nextSource: RemoteSourceId) {
     setRemoteVisibleCounts((current) => ({
       ...current,
-      [nextSource]: (current[nextSource] ?? 6) + 6,
+      [nextSource]: Math.max(current[nextSource] ?? 0, remotePageSize) + remotePageSize,
     }))
   }
 
@@ -349,11 +408,22 @@ function App() {
           />
         </label>
 
+        {panelMode === 'local' ? (
+          <button
+            className="sync-button"
+            type="button"
+            onClick={() => void handleLocalSync()}
+            disabled={isSyncing || isRefreshing}
+          >
+            {isSyncing ? 'Running SYX...' : 'SYX Sync'}
+          </button>
+        ) : null}
+
         <button
           className="refresh-button"
           type="button"
           onClick={() => void handleRefresh()}
-          disabled={isRefreshing}
+          disabled={isRefreshing || isSyncing}
         >
           {isRefreshing
             ? 'Refreshing...'
@@ -533,11 +603,11 @@ function App() {
               </section>
             </>
           ) : (
-            <div className="cloud-stage">
+            <div className="cloud-stage" ref={cloudStageRef}>
               {remoteSources.map((source) => {
                 const sourceId = source.id as RemoteSourceId
                 const sourceSkills = remoteSkillsBySource[sourceId] ?? []
-                const visibleLimit = remoteVisibleCounts[sourceId] ?? 6
+                const visibleLimit = Math.max(remoteVisibleCounts[sourceId] ?? 0, remotePageSize)
                 const visibleCards = sourceSkills.slice(0, visibleLimit)
 
                 return (
@@ -566,7 +636,7 @@ function App() {
                       </div>
                     ) : (
                       <>
-                        <div className="skills-grid">
+                        <div className="skills-grid" data-remote-grid="true">
                           {visibleCards.map((skill) => (
                             <article className="skill-card remote-card" key={skill.id}>
                               <div className="skill-card-top">
@@ -790,6 +860,63 @@ function formatTime(value: string | null) {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date)
+}
+
+function getRemotePageSize(stage: HTMLDivElement) {
+  const grid = stage.querySelector<HTMLElement>('[data-remote-grid="true"]')
+  const resolvedColumns = grid
+    ? countResolvedGridColumns(window.getComputedStyle(grid).gridTemplateColumns)
+    : 0
+  const estimatedColumns = estimateRemoteColumns(stage.clientWidth)
+  const columns = Math.max(resolvedColumns, estimatedColumns)
+
+  return columns * 2
+}
+
+function countResolvedGridColumns(template: string) {
+  if (!template || template === 'none') {
+    return 0
+  }
+
+  return splitTopLevelTemplateValue(template).length
+}
+
+function splitTopLevelTemplateValue(value: string) {
+  const parts: string[] = []
+  let current = ''
+  let depth = 0
+
+  for (const character of value.trim()) {
+    if (character === '(') {
+      depth += 1
+    } else if (character === ')' && depth > 0) {
+      depth -= 1
+    }
+
+    if (character === ' ' && depth === 0) {
+      if (current) {
+        parts.push(current)
+        current = ''
+      }
+      continue
+    }
+
+    current += character
+  }
+
+  if (current) {
+    parts.push(current)
+  }
+
+  return parts.filter(Boolean)
+}
+
+function estimateRemoteColumns(stageWidth: number) {
+  const gridGap = 14
+  const minCardWidth = 240
+  const innerPadding = window.innerWidth <= 720 ? 36 : 44
+  const usableWidth = Math.max(stageWidth - innerPadding, minCardWidth)
+  return Math.max(1, Math.floor((usableWidth + gridGap) / (minCardWidth + gridGap)))
 }
 
 export default App

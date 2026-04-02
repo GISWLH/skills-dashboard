@@ -1,7 +1,7 @@
 {
   "name": "skills-dashboard",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -24,6 +24,7 @@
       "dist-electron/**/*"
     ],
     "win": {
+      "signAndEditExecutable": false,
       "target": [
         {
           "target": "nsis",

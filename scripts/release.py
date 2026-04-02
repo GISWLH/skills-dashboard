@@ -10,13 +10,13 @@ Examples:
 
 Requires:
     - GITHUB_TOKEN env var with repo scope
-    - npm run build already done (or pass --build to build first)
-    - The zip must already exist, or pass --pack to run packaging first
+    - release assets already exist, or pass --build to run packaging first
 
 What it does:
-    1. Optionally builds & packages (--build / --pack)
+    1. Optionally runs the full packaging flow (--build)
     2. Creates the GitHub release tag
-    3. Uploads release/AgentSkillsDashboard-<version>-win-x64.zip as an asset
+    3. Uploads release/AgentSkillsDashboard-<version>-win-x64.zip
+    4. Uploads matching installer .exe assets when present
 """
 
 import argparse
@@ -61,10 +61,10 @@ def gh_post(url: str, token: str, data: dict | None = None, raw: bytes | None = 
         raise
 
 
-def build(version: str) -> Path:
-    """Build the web + electron bundles and package into a zip."""
-    print("Building …")
-    subprocess.run(["npx", "vite", "build"], cwd=ROOT, check=True, shell=True)
+def build(version: str) -> list[Path]:
+    """Run the full release build and return assets to upload."""
+    print("Packaging desktop build …")
+    subprocess.run(["npm", "run", "dist"], cwd=ROOT, check=True, shell=True)
 
     zip_name = f"AgentSkillsDashboard-{version}-win-x64.zip"
     zip_path = ROOT / "release" / zip_name
@@ -76,15 +76,32 @@ def build(version: str) -> Path:
 
     print(f"Packing {zip_path.name} …")
     shutil.make_archive(str(zip_path.with_suffix("")), "zip", unpacked)
-    return zip_path
+    return find_assets(version)
+
+
+def find_assets(version: str) -> list[Path]:
+    release_dir = ROOT / "release"
+    version_without_v = version.removeprefix("v")
+    zip_path = release_dir / f"AgentSkillsDashboard-{version}-win-x64.zip"
+
+    assets: list[Path] = []
+    if zip_path.exists():
+        assets.append(zip_path)
+
+    exe_assets = sorted(
+        path
+        for path in release_dir.glob("*.exe")
+        if version_without_v in path.name
+    )
+    assets.extend(exe_assets)
+    return assets
 
 
 def main():
     parser = argparse.ArgumentParser(description="Publish a GitHub release")
     parser.add_argument("version", help="Version tag, e.g. v0.2.0")
     parser.add_argument("--notes", default="", help="Extra release notes")
-    parser.add_argument("--build", action="store_true", help="Run vite build before packing")
-    parser.add_argument("--pack", action="store_true", help="Repack win-unpacked into zip")
+    parser.add_argument("--build", action="store_true", help="Run npm run dist before uploading")
     args = parser.parse_args()
 
     token = os.environ.get("GITHUB_TOKEN")
@@ -93,23 +110,21 @@ def main():
         sys.exit(1)
 
     version = args.version
-    zip_name = f"AgentSkillsDashboard-{version}-win-x64.zip"
-    zip_path = ROOT / "release" / zip_name
-
-    if args.build or args.pack:
-        zip_path = build(version)
-    elif not zip_path.exists():
-        print(f"Zip not found: {zip_path}")
-        print("Run with --build or --pack to generate it first.")
+    version_without_v = version.removeprefix("v")
+    assets = build(version) if args.build else find_assets(version)
+    if not assets:
+        print(f"No release assets found for {version}.")
+        print("Run with --build to generate them first.")
         sys.exit(1)
 
-    body = f"Download the zip, extract, and run `Agent Skills Dashboard.exe` — no installer needed.\n\n"
+    zip_name = f"AgentSkillsDashboard-{version}-win-x64.zip"
+    body = "Download the installer `.exe` for a standard Windows setup, or use the zip for a portable build.\n\n"
     if args.notes:
         body += f"### Changes\n{args.notes}\n\n"
     body += (
         "### 用法\n"
-        f"1. 下载 `{zip_name}`\n"
-        "2. 解压到任意目录\n"
+        f"1. 下载安装包 `*{version_without_v}*.exe`，或下载便携包 `{zip_name}`\n"
+        "2. 安装器路径按向导完成安装，或将 zip 解压到任意目录\n"
         "3. 运行 `Agent Skills Dashboard.exe`"
     )
 
@@ -135,23 +150,24 @@ def main():
     release_url = rel["html_url"]
     print(f"  Release: {release_url}")
 
-    # Upload asset
-    size_mb = zip_path.stat().st_size // 1024 // 1024
-    print(f"Uploading {zip_name} ({size_mb} MB) …")
-    raw = zip_path.read_bytes()
-    try:
-        asset = gh_post(
-            f"{upload_url}?name={zip_name}",
-            token,
-            raw=raw,
-            content_type="application/octet-stream",
-        )
-        print(f"  Download: {asset['browser_download_url']}")
-    except urllib.error.HTTPError as e:
-        if e.code == 422:
-            print("  Asset already exists on this release.")
-        else:
-            sys.exit(1)
+    for asset_path in assets:
+        asset_name = asset_path.name
+        size_mb = asset_path.stat().st_size // 1024 // 1024
+        print(f"Uploading {asset_name} ({size_mb} MB) …")
+        raw = asset_path.read_bytes()
+        try:
+            asset = gh_post(
+                f"{upload_url}?name={asset_name}",
+                token,
+                raw=raw,
+                content_type="application/octet-stream",
+            )
+            print(f"  Download: {asset['browser_download_url']}")
+        except urllib.error.HTTPError as e:
+            if e.code == 422:
+                print(f"  Asset already exists on this release: {asset_name}")
+            else:
+                sys.exit(1)
 
     print("\nDone.")
 
